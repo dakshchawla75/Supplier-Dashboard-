@@ -3,6 +3,12 @@ import polars as pl
 import pandas as pd
 import io
 
+st.set_page_config(layout="wide")
+
+passowrd = st.text_input("Enter Password to access the dashboard", type ="password")
+if passowrd != "Newjoiner@01":
+    st.stop()
+    
 def clean_string(s):
     if s is None:
         return ""
@@ -15,10 +21,7 @@ def load_data():
         # Clean column names
         df = df.rename({col: col.strip().replace("/", "_").replace(" ", "_") for col in df.columns})
         # Precompute a single search_blob column for fast searching (only ONCE!)
-        str_cols = [col for col in df.columns if df[col].dtype == pl.Utf8]
-        df = df.with_columns(
-            pl.concat_str(str_cols, separator=" ").alias("search_blob")
-        )
+        df = df.with_columns([pl.col(col).cast(pl.Utf8).alias(col) for col in df.columns])
         return df
     except Exception as e:
         st.error(f"Upload failed: {e}")
@@ -38,7 +41,6 @@ Category2_options = get_options("Category_2")
 Category3_options = get_options("Category_3")
 Product_options = get_options("Product_Service")
 
-st.set_page_config(page_title="Supplier Dashboard", layout="wide")
 
 st.markdown("""
 <style>
@@ -58,7 +60,7 @@ left_col, right_col = st.columns([6,1])
 with left_col:
     st.markdown("""
                 <div style = "background-color: white; padding: 20px; border-radius: 10px; margin-bottom: 10px;display: flex;align-items: center;">
-        <span style ='color: #0F1C2E; font-size: 26px; font-weight: bold;'> Supplier Home Page 
+        <span style ='color: #0F1C2E; font-size: 26px; font-weight: bold;'> Supplier Dashboard 
         </div>
 
     """, unsafe_allow_html=True)
@@ -66,7 +68,7 @@ with left_col:
 with right_col:
     st.markdown("""
                 <div style = padding: 20px; border-radius: 10px; margin-bottom: 10px;display: flex;align-items: center;"></div>""", unsafe_allow_html=True)
-    st.image("assets/logo.jpg",width=100)
+    st.image("logo.jpg",width=100)
 
 # Search and Filters UI
 search = st.text_input("Search", "")
@@ -93,13 +95,6 @@ with col8:
 # ---- FAST FILTERING ----
 
 filtered_df = df
-
-# SEARCH: only on precomputed search_blob, only ONCE!
-if search:
-    filtered_df = filtered_df.filter(
-        pl.col("search_blob").str.to_lowercase().str.contains(search.lower())
-    )
-
 # Each filter: use .str.strip().to_lowercase() (and NEVER .stip or using .str twice)
 if supplierName_filter != "All":
     filtered_df = filtered_df.filter(
@@ -133,9 +128,14 @@ if Product_filter != "All":
     filtered_df = filtered_df.filter(
         pl.col("Product_Service").str.to_lowercase() == Product_filter
     )
-
+# SEARCH: only on precomputed search_blob, only ONCE!
+if search:
+    filtered_df = filtered_df.filter(
+        pl.col("Concat").str.to_lowercase().str.contains(search.lower())
+    )
+filtered_df_no_concat = filtered_df.drop("Concat")
 # ---------- Show Table (now up to 2000 rows!) ----------
-st.dataframe(filtered_df.head(4000).to_pandas(), use_container_width=True)
+st.dataframe(filtered_df_no_concat.head(4000).to_pandas(), use_container_width=True)
 
 # ---------- Download Button ----------
 if filtered_df.shape[0] > 0:
@@ -146,8 +146,35 @@ if filtered_df.shape[0] > 0:
     st.download_button(
         label="Export Search Results",
         data=buffer.getvalue(),
-        file_name="filtered_supplier_data.xlsx",
+        file_name="Supplier_Dashboard_Results.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 else:
     st.info("No data to export. Please adjust your filters or search.")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
